@@ -1,5 +1,6 @@
 const FundraiserContract = artifacts.require("Fundraiser");
 var expect = require('chai').expect;
+var assert = require('chai').assert;
 
 contract("Fundraiser Contract", (accounts) => {
     let contractInstance;
@@ -70,4 +71,25 @@ contract("Fundraiser Contract", (accounts) => {
             }
         })
     })
+
+    context("Making a donation", () => {
+        const value = web3.utils.toWei("0.02");
+        const donor = accounts[3];
+
+        it("Increases myDonationsCount", async() =>{
+            const previousDonationsCount = await contractInstance.myDonationsCount({from: donor});
+            await contractInstance.donate({from: donor, value});
+            const currentDonationsCount = await contractInstance.myDonationsCount({from: donor});
+            const difference = currentDonationsCount - previousDonationsCount;
+            expect(1).to.equal(difference);
+        })
+
+        it("Includes our donation in myDonations", async() => {
+            await contractInstance.donate({from: donor, value});
+            const {values, dates} = await contractInstance.myDonations({from: donor});
+            assert.equal(value, values[0], "Values should match");
+            assert(dates[0], "Date should be returned");
+        })
+    })
+
 })
