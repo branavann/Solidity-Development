@@ -90,6 +90,31 @@ contract("Fundraiser Contract", (accounts) => {
             assert.equal(value, values[0], "Values should match");
             assert(dates[0], "Date should be returned");
         })
+
+        it("Updates the donation counter", async() => {
+            const initalCount = await contractInstance.totalDonationCount();
+            await contractInstance.donate({from: donor, value});
+            const currentCount = await contractInstance.totalDonationCount();
+            const difference = currentCount - initalCount;
+            expect(difference).to.equal(1);
+        })
+
+        it("Updates the totals donation value", async() => {
+            const initalValue = await contractInstance.totalDonationValue();
+            await contractInstance.donate({from: donor, value});
+            const currentValue = await contractInstance.totalDonationValue();
+            const difference = currentValue - initalValue;
+            assert.equal(difference, value, "Donation value didn't update");
+        })
+
+        it("Emits the DonationRecieved event", async() => {
+            const transaction = await contractInstance.donate({from: donor, value});
+            const expectedEvent = "DonationRecieved";
+            const actualEvent = transaction.logs[0].event;
+            expect(expectedEvent).to.equal(actualEvent);
+            console.log(transaction);
+        })
+
     })
 
 })

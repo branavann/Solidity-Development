@@ -2,8 +2,12 @@
 pragma solidity^0.8.0;
 
 import "openzeppelin-solidity/contracts/access/Ownable.sol";
+import "openzeppelin-solidity/contracts/utils/math/SafeMath.sol";
 
 contract Fundraiser is Ownable {
+
+    // Prevents overflow issues, espeically for donation amount 
+    using SafeMath for uint256;
 
     struct Donation {
         uint256 value;
@@ -17,7 +21,12 @@ contract Fundraiser is Ownable {
     address payable public beneficiary;
     address private _owner;
 
+    uint256 public totalDonationCount = 0;
+    uint256 public totalDonationValue = 0;
+
     mapping(address => Donation[]) private _donations;
+
+    event DonationRecieved(address indexed donor, uint256 value);
 
     // transferOwnership ensures the contract is controlled by the custodian
     constructor(string memory _name, string memory _url, string memory _imageURL, string memory _description, address payable _beneficiary, address _custodian) public {
@@ -36,6 +45,11 @@ contract Fundraiser is Ownable {
     function donate() public payable{
         Donation memory donation = Donation({value: msg.value, date: block.timestamp});
         _donations[msg.sender].push(donation);
+        // This syntax enables us to avoid integer overflow issues 
+        totalDonationCount = totalDonationCount.add(1);
+        totalDonationValue = totalDonationValue.add(msg.value);
+
+        emit DonationRecieved(msg.sender, msg.value);
     }
 
     function myDonationsCount() public view returns(uint) {
