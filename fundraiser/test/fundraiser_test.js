@@ -99,11 +99,11 @@ contract("Fundraiser Contract", (accounts) => {
             expect(difference).to.equal(1);
         });
 
-        it("Updates the totals donation value", async() => {
-            const initalValue = await contractInstance.totalDonationValue();
+        it("Updates the total donation value", async() => {
+            const initialValue = await contractInstance.totalDonationValue();
             await contractInstance.donate({from: donor, value});
             const currentValue = await contractInstance.totalDonationValue();
-            const difference = currentValue - initalValue;
+            const difference = currentValue - initialValue;
             assert.equal(difference, value, "Donation value didn't update");
         });
 
@@ -151,13 +151,38 @@ contract("Fundraiser Contract", (accounts) => {
 
             const difference = newBeneficiaryBalance - initialBeneficiaryBalance;
 
-            console.log(difference);
-            console.log(newContractBalance);
-
             assert.equal(newContractBalance, 0, "Contract should have a 0 balance");
-            expect(newContractBalance).to.equal("0"); //Must use quotation marks for 0
-            // expect(newBeneficiaryBalance).to.equal(difference);
+            assert.equal(difference, initialContractBalance, "Beneficiary should recieve all the funds");
         })
 
+        it("Emits a Withdraw event", async() => {
+            const transaction = await contractInstance.withdraw({from: owner});
+            const expected = "Withdraw";
+            expect(transaction.logs[0].event).to.equal(expected);
+        })
     });
+
+    describe("Fallback function", () => {
+        const value = web3.utils.toWei("0.2");
+        
+        it("Updates the donation counter", async() => {
+            const initialCount = await contractInstance.totalDonationCount();
+            // Fallback function
+            await web3.eth.sendTransaction({to: contractInstance.address, from: accounts[5], value});
+            const currentCount = await contractInstance.totalDonationCount();
+            const difference = currentCount - initialCount;
+            expect(difference).to.equal(1);
+
+        });
+
+        it("Updates the total donation value", async() => {
+            const initialValue = await contractInstance.totalDonationValue();
+            // Fallback function
+            await web3.eth.sendTransaction({to: contractInstance.address, from: accounts[5], value});
+            const currentValue = await contractInstance.totalDonationValue();
+            const difference = currentValue - initialValue;
+            assert.equal(difference, value, "Difference should match the donation value");
+        });
+    
+    })
 });
