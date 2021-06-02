@@ -26,51 +26,51 @@ contract("Fundraiser Contract", (accounts) => {
         it("Returns the beneficiary's name", async() => {
             const beneficiaryName = await contractInstance.name();
             expect(beneficiaryName).to.equal(name);
-        })
+        });
         it("Returns the beneficiary's URL", async() => {
             const beneficiaryURL = await contractInstance.url();
             expect(beneficiaryURL).to.equal(url);
-        })
+        });
         it("Returns the beneficiary's image", async() => {
             const beneficiaryImage = await contractInstance.imageURL();
             expect(beneficiaryImage).to.equal(imageURL);
-        })
+        });
         it("Returns the beneficiary's description", async() => {
             const beneficiaryDescription = await contractInstance.description();
             expect(beneficiaryDescription).to.equal(description);
-        })
+        });
         it("Returns the beneficiary's address", async() => {
             const beneficiaryAddress = await contractInstance.beneficiary();
             expect(beneficiaryAddress).to.equal(beneficiary);
-            console.log(beneficiaryAddress);
-        })
+            // console.log(beneficiaryAddress);
+        });
         it("Returns the owner's address", async() => {
             const ownerAddress = await contractInstance.owner();
             expect(ownerAddress).to.equal(owner);
-            console.log(ownerAddress);
-            console.log("-------");
-            console.log(accounts[0]);
-        })
-    })
+            // console.log(ownerAddress);
+            // console.log(accounts[0]);
+        });
+    });
+
     context("setBeneficiary", () => {
-        const newBeneficary = accounts[2];
+        const newBeneficiary = accounts[2];
 
         it("Function called by the contract owner", async() => {
-            await contractInstance.setBeneficiary(newBeneficary, {from: owner});
-            const actualBeneficary = await contractInstance.beneficiary();
-            expect(actualBeneficary).to.equal(newBeneficary);
-        })
+            await contractInstance.setBeneficiary(newBeneficiary, {from: owner});
+            const actualBeneficiary = await contractInstance.beneficiary();
+            expect(actualBeneficiary).to.equal(newBeneficiary);
+        });
 
         it("Function called by a non-owner address", async() => {
             try {
-                await contractInstance.setBeneficiary(newBeneficary, {from: accounts[3]});
+                await contractInstance.setBeneficiary(newBeneficiary, {from: accounts[3]});
                 assert(false);
             } catch(err) {
-                console.log(err.reason);
+                // console.log(err.reason);
                 assert(err);   
             }
-        })
-    })
+        });
+    });
 
     context("Making a donation", () => {
         const value = web3.utils.toWei("0.02");
@@ -82,14 +82,14 @@ contract("Fundraiser Contract", (accounts) => {
             const currentDonationsCount = await contractInstance.myDonationsCount({from: donor});
             const difference = currentDonationsCount - previousDonationsCount;
             expect(1).to.equal(difference);
-        })
+        });
 
         it("Includes our donation in myDonations", async() => {
             await contractInstance.donate({from: donor, value});
             const {values, dates} = await contractInstance.myDonations({from: donor});
             assert.equal(value, values[0], "Values should match");
             assert(dates[0], "Date should be returned");
-        })
+        });
 
         it("Updates the donation counter", async() => {
             const initalCount = await contractInstance.totalDonationCount();
@@ -97,7 +97,7 @@ contract("Fundraiser Contract", (accounts) => {
             const currentCount = await contractInstance.totalDonationCount();
             const difference = currentCount - initalCount;
             expect(difference).to.equal(1);
-        })
+        });
 
         it("Updates the totals donation value", async() => {
             const initalValue = await contractInstance.totalDonationValue();
@@ -105,16 +105,59 @@ contract("Fundraiser Contract", (accounts) => {
             const currentValue = await contractInstance.totalDonationValue();
             const difference = currentValue - initalValue;
             assert.equal(difference, value, "Donation value didn't update");
-        })
+        });
 
         it("Emits the DonationRecieved event", async() => {
             const transaction = await contractInstance.donate({from: donor, value});
             const expectedEvent = "DonationRecieved";
             const actualEvent = transaction.logs[0].event;
             expect(expectedEvent).to.equal(actualEvent);
-            console.log(transaction);
+            // console.log(transaction);
+        });
+    });
+
+    describe("Withdrawing funds to the beneficiary's address", () => {
+        beforeEach(async () => {
+            await contractInstance.donate({from: accounts[2], value: web3.utils.toWei("0.2")});
+        });
+
+        it("Error when called from a non-owner account", async() => {
+            try {
+                await contractInstance.withdraw({from: accounts[3]});
+                assert(false, "Withdraw function was not restricted to the owner")
+            } catch(err) {
+                // console.log(err.reason);
+                assert(err);
+            }
+        });
+
+        it("Permits the owner to called the function", async() => {
+            try {
+                await contractInstance.withdraw({from: owner});
+                assert(true, "No errors were thrown");
+            } catch(err) {
+                asssert(false, "Owner should be able to call the withdraw function")
+            }
+        });
+
+        it("Transfers contract balance to the beneficiary", async () => {
+            const initialContractBalance = await web3.eth.getBalance(contractInstance.address);
+            const initialBeneficiaryBalance = await web3.eth.getBalance(beneficiary);
+
+            await contractInstance.withdraw({from: owner});
+
+            const newContractBalance = await web3.eth.getBalance(contractInstance.address);
+            const newBeneficiaryBalance = await web3.eth.getBalance(beneficiary);
+
+            const difference = newBeneficiaryBalance - initialBeneficiaryBalance;
+
+            console.log(difference);
+            console.log(newContractBalance);
+
+            assert.equal(newContractBalance, 0, "Contract should have a 0 balance");
+            expect(newContractBalance).to.equal("0"); //Must use quotation marks for 0
+            // expect(newBeneficiaryBalance).to.equal(difference);
         })
 
-    })
-
-})
+    });
+});

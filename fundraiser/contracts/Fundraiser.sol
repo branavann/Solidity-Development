@@ -18,6 +18,7 @@ contract Fundraiser is Ownable {
     string public url;
     string public imageURL;
     string public description;
+
     address payable public beneficiary;
     address private _owner;
 
@@ -27,9 +28,10 @@ contract Fundraiser is Ownable {
     mapping(address => Donation[]) private _donations;
 
     event DonationRecieved(address indexed donor, uint256 value);
+    event Withdraw(uint256 amount);
 
     // transferOwnership ensures the contract is controlled by the custodian
-    constructor(string memory _name, string memory _url, string memory _imageURL, string memory _description, address payable _beneficiary, address _custodian) public {
+    constructor(string memory _name, string memory _url, string memory _imageURL, string memory _description, address payable _beneficiary, address _custodian) {
         name = _name;
         url = _url;
         imageURL = _imageURL;
@@ -72,6 +74,12 @@ contract Fundraiser is Ownable {
         }
 
         return(values, dates);
+    }
+
+    function withdraw() public onlyOwner {
+        uint256 balance = address(this).balance;
+        beneficiary.transfer(balance);
+        emit Withdraw(balance);
     }
 
  }
