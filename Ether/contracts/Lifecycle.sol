@@ -2,40 +2,38 @@
 
 pragma solidity ^0.8.1;
 
-contract MappingExample {
+contract SendMoneyExample {
     
-    mapping(address => uint) public amountWithdrawn;
-    mapping(address => uint) public amountDeposit;
+    address public owner;
+    bool public paused;
     
-    function getBalance() public view returns(uint) {
-        // Required to cast this to the address type in order to check the balance
-        return address(this).balance;
+    // Constructor function is only called once. It doesn't require public or private declaration
+    constructor() {
+        // Owner is set as the person/address that deployed the contract
+        owner = msg.sender;
     }
-    
-    // Must be declared as payable
-    function sendMoney() public payable{
-        amountDeposit[msg.sender] += msg.value;
+
+    // Restricts interactions with a contract 
+    function setPaused(bool _paused) public {
+        require(msg.sender == owner, "Must be called by the owner of this contract");
+        require(!paused, "Contract is already paused");
+        paused = _paused;
+    }
+
+    function sendMoney() public payable {
+        require(!paused, "Contract is paused. Users are unable to interact with it.");
     }
     
     function withdrawAllMoney(address payable _to) public {
-        // Checks and effects occur first to protect against reentrancy bugs
-        amountWithdrawn[_to] += address(this).balance;
-        // Interactions come last
+        require(msg.sender == owner, "Must be called by the owner of this contract");
+        require(!paused, "Contract is paused. Users are unable to interact with it");
         _to.transfer(address(this).balance);
-        
     }
     
-    function withdrawMyDeposit(address payable _to) public {
-        uint withdrawal = amountDeposit[msg.sender];
-        amountWithdrawn[msg.sender] += withdrawal;
-        _to.transfer(withdrawal);
-    }
-    
-    function withdrawMoney(address payable _to, uint _amount) public {
-        require(amountDeposit[msg.sender] >= _amount, "Your withdrawal request is greater than your deposit.");
-        amountDeposit[msg.sender] -= _amount;
-        amountWithdrawn[msg.sender] += _amount;
-        _to.transfer(_amount);
+    // Destroys the contract and sends the remaining funds to the specified address
+    function killSmartContract(address payable _to) public {
+        require(msg.sender == owner, "Must be called by the owner of this contract");
+        selfdestruct(_to);
     }
     
 }
