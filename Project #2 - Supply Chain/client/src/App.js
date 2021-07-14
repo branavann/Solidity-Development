@@ -47,11 +47,11 @@ class App extends Component {
     // Listens to the SupplyChainEvent from ItemManager
     this.itemManager.events.SupplyChainStep().on("data", async function(evt) {
       if(evt.returnValues._step ==1) {
-        let itemObject = await self.itemManager.methods.items(evt.returnValues._itemIndex).call();
+        let itemObject = await self.itemManager.methods.items(evt.returnValues._itemIndex).call(); // Returns the struct and associated values for the item
         console.log(itemObject);
         alert("Item: " + itemObject._id + " has successfully been paid for");
       };
-      console.log(evt);
+      console.log(evt); // Returns the return values from the SupplyChainEvent 
     });
   }
 

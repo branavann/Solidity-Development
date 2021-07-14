@@ -1,0 +1,14 @@
+{
+  "name": "my_token",
+  "version": "1.0.0",
+  "description": "Creating an ERC20 token",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
