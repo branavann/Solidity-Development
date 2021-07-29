@@ -1,5 +1,6 @@
 const MyToken = artifacts.require("MyToken");
 const MyTokenSale = artifacts.require("MyTokenSale");
+var MyKycContract = artifacts.require("./KycContract.sol");
 require("dotenv").config({path : "../.env"});
 
 const chai = require('./setupchai.js');
@@ -14,6 +15,7 @@ contract("BKN TokenSale Test", async (accounts) => {
     it("No tokens should remain within initialHolder account", async() => {
 
         let instance = await MyToken.deployed();
+        // Tokens have previously been transferred within the migrations script
         return expect(instance.balanceOf(initialHolder)).to.eventually.be.a.bignumber.equal(new BN(0));
     })
 
@@ -27,9 +29,13 @@ contract("BKN TokenSale Test", async (accounts) => {
 
         let tokenInstance = await MyToken.deployed();
         let saleInstance = await MyTokenSale.deployed();
+        let kycApproval = await MyKycContract.deployed();
 
         // Initial token balance of receipient
         let initialRecipientBalance = await tokenInstance.balanceOf(recipient);
+
+        // Approve KYC for recipient / purchaser of tokens
+        await expect(kycApproval.setKycCompleted(recipient)).to.be.fulfilled;
         
         // Low level interaction to the recieve() function which triggers buyTokens()
         await expect(saleInstance.sendTransaction({from: recipient, value: 10})).to.be.fulfilled;
