@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
+// SPDX-License-Identifier: GPL-3.0
+
 pragma solidity >=0.7.0 <0.9.0;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
@@ -35,8 +37,8 @@ contract SmartBankAccount is Ownable{
     event compoundAddressChange(address _newAddress, uint _timestamp);
     
     // Mappings
-    mapping(address => uint) public balance;
-    mapping(address => uint) depositTimestamps;
+    mapping(address => uint) balance; // Stores cETH balances
+
     
     // Updates the compound address
     function setCompoundAddress(address COMPOUND_CETH_ADDRESS) external onlyOwner{
@@ -47,12 +49,10 @@ contract SmartBankAccount is Ownable{
     
     function addBalance() public payable {
         
+        require(initialized, "Please set the Compound address");
+        
         // Balance before the deposit is made
         uint beforeBalance = ceth.balanceOf(address(this));
-        
-        // Updating our local smart contract
-        depositTimestamps[msg.sender] = block.timestamp;
-        totalContractBalance += msg.value;
         
         // Sending deposit to compound
         ceth.mint{value: msg.value}();
@@ -61,38 +61,43 @@ contract SmartBankAccount is Ownable{
         uint afterBalance = ceth.balanceOf(address(this));
         uint userBalance = afterBalance - beforeBalance;
         require(userBalance >= 0, "Insufficient balance");
-        balance[msg.sender] = userBalance;
+        balance[msg.sender] = userBalance; // Balance is stored in cETH
         
         // Emitting an event
         emit accountDeposit(msg.sender, msg.value, block.timestamp);
     }
     
-    function getBalance(address _address) public view returns(uint){
-        // Multiples cETH by exchange rate and divides by 1e18
-        return (ceth.balanceOf(_address) * ceth.exchangeRateStored() / 1e18);
+    function getcETHBalance(address _address) public view returns(uint){
+        return balance[_address];
     }
     
+    function getExchangeRate() public view returns(uint){
+        return ceth.exchangeRateStored();
+    }
+    
+    function getBalance(address _address) public view returns(uint){
+        return (balance[_address] * getExchangeRate() / 1e18);
+    }
+    
+    
     function getContractBalance() public view returns(uint){
-        require(initialized, "Please initalize the setCompoundAddress() function with an address");
-        return ceth.balanceOf(address(this));
+        return totalContractBalance;
     }
     
     function withdraw() public payable{
         // Setting and defining our variables
-        uint withdrawalAmount = getBalance(msg.sender);
+        address payable _depositAddress = payable(msg.sender);
+        uint _withdraw = balance[msg.sender];
         
         // Updating the mappings
         delete balance[msg.sender];
-        delete depositTimestamps[msg.sender];
-        
-        // Update the contract balance
-        totalContractBalance -= withdrawalAmount;
-        
+
         // Transfer the funds
-        ceth.redeem(withdrawalAmount);
+        ceth.redeem(_withdraw);
+        _depositAddress.transfer(_withdraw);
         
         // Emit an event
-        emit accountWithdrawal(msg.sender, withdrawalAmount, block.timestamp);
+        emit accountWithdrawal(msg.sender, _withdraw, block.timestamp);
     }
     
     function fundContract() public payable{
@@ -102,6 +107,9 @@ contract SmartBankAccount is Ownable{
     
     function getBaseFee() public view returns(uint) {
         return block.basefee;
+    }
+    
+    receive() external payable{
     }
     
 }
