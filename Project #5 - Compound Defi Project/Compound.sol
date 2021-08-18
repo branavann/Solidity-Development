@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
 
-// SPDX-License-Identifier: GPL-3.0
-
 pragma solidity >=0.7.0 <0.9.0;
 
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
@@ -84,20 +82,22 @@ contract SmartBankAccount is Ownable{
         return totalContractBalance;
     }
     
-    function withdraw() public payable{
+    // Doesn't need to be payable beacuse we're not sending money directly to this function
+    function withdraw() public {
         // Setting and defining our variables
         address payable _depositAddress = payable(msg.sender);
-        uint _withdraw = balance[msg.sender];
+        uint _withdrawCETH = balance[msg.sender];
         
         // Updating the mappings
         delete balance[msg.sender];
 
         // Transfer the funds
-        ceth.redeem(_withdraw);
-        _depositAddress.transfer(_withdraw);
+        ceth.redeem(_withdrawCETH);
+        uint _withdrawETH = (_withdrawCETH * ceth.exchangeRateStored() / 1e18);
+        _depositAddress.transfer(_withdrawETH);
         
         // Emit an event
-        emit accountWithdrawal(msg.sender, _withdraw, block.timestamp);
+        emit accountWithdrawal(msg.sender, _withdrawETH, block.timestamp);
     }
     
     function fundContract() public payable{
