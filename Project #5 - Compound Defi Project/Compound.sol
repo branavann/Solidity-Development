@@ -18,6 +18,26 @@ interface cETH {
         
 }
 
+interface IERC20 {
+    
+    // Returns the totalSupply of an ERC20 contract
+    function totalSupply() external view returns (uint256);
+    // Returns the balance of a particular address
+    function balanceOf(address who) external view returns (uint256);
+    // Transfer ERC20 token
+    function transfer(address to, uint value) external returns(bool);
+    // Returns the remaining numbers of tokens the spender can spend on behalf of the owner
+    // Default value of 0, change the allowance by calling approve()
+    // Value changes once transferFrom(), deducts the amount spent by the spender
+    function allowance(address owner, address spender) external view returns (uint);
+    // Using the allowance function, transfers specific value of ERC20 tokens from owner's address to the spender's address
+    function transferFrom(address from, address to, uint value) external returns(bool);
+    // Owner of an account can set the allowance for the spender to use on their behalf; returns true if successful
+    // For changing allowance change previousValue to 0 then 0 to newValue to prevent spender from gaining access to previousValue + newValue
+    function approve(address spender, uint value) external returns(bool);
+    
+}
+
 contract SmartBankAccount is Ownable{
 
     // Global variables
@@ -36,7 +56,6 @@ contract SmartBankAccount is Ownable{
     
     // Mappings
     mapping(address => uint) balance; // Stores cETH balances
-
     
     // Updates the compound address
     function setCompoundAddress(address COMPOUND_CETH_ADDRESS) external onlyOwner{
@@ -65,6 +84,19 @@ contract SmartBankAccount is Ownable{
         emit accountDeposit(msg.sender, msg.value, block.timestamp);
     }
     
+    function approveERC20Balance(address erc20SmartContractAddress, uint _amount) public {
+        // Instantiate the ERC20 contract
+        IERC20 erc20 = IERC20(erc20SmartContractAddress);
+        // Check if the user has sufficient amount to approve
+        require(erc20.balanceOf(msg.sender) > _amount, "Insufficient ERC20 Tokens");
+        // Approves our smart contract to use the provided balance
+        erc20.approve(address(this), _amount);
+    }
+    
+    function depositERC20Balance() public {
+        require(erc20.allowance(msg.sender, address(this)) > 0, "No ERC20 tokens have been authorized. Please use the approveERC20Balance() to specify the amount of ERC20 tokens you'd like to authorize.");
+    }
+    
     function getcETHBalance(address _address) public view returns(uint){
         return balance[_address];
     }
@@ -83,30 +115,48 @@ contract SmartBankAccount is Ownable{
     }
     
     // Doesn't need to be payable beacuse we're not sending money directly to this function
-    function withdraw() public {
+    function withdrawAll() public {
         // Setting and defining our variables
         address payable _depositAddress = payable(msg.sender);
         uint _withdrawCETH = balance[msg.sender];
         
-        // Updating the mappings
+        // Updating the mappings to prevent a re-entrancy attack
         delete balance[msg.sender];
 
         // Transfer the funds
         ceth.redeem(_withdrawCETH);
-        uint _withdrawETH = (_withdrawCETH * ceth.exchangeRateStored() / 1e18);
+        uint _withdrawETH = (_withdrawCETH * getExchangeRate() / 1e18);
         _depositAddress.transfer(_withdrawETH);
         
         // Emit an event
         emit accountWithdrawal(msg.sender, _withdrawETH, block.timestamp);
     }
     
+    function withdrawPartial(uint _amount) public {
+        
+        // Validating if the user has a sufficient balance; uint only allows positive numbers
+        require(balance[msg.sender] - _amount >= 0, "Insufficient balance within your account");
+        
+        // Casting address to payable type
+        address payable _depositAddress = payable(msg.sender);
+        
+        // Updating the users balance
+        balance[msg.sender] = balance[msg.sender] - _amount;
+        
+        // Retrieving cETH 
+        ceth.redeem(_amount);
+        // Converting cETH into ether
+        uint partialETHAmount = _amount * getExchangeRate() / 1e18;
+        // Depositing the funds to the user
+        _depositAddress.transfer(partialETHAmount);
+        
+        // Emitting an event
+         emit accountWithdrawal(msg.sender, partialETHAmount, block.timestamp);
+    }
+    
     function fundContract() public payable{
         totalContractBalance += msg.value;
         emit contractDeposit(msg.sender, msg.value, block.timestamp);
-    }
-    
-    function getBaseFee() public view returns(uint) {
-        return block.basefee;
     }
     
     receive() external payable{
