@@ -1,0 +1,17 @@
+{
+  "name": "uniswap",
+  "version": "1.0.0",
+  "description": "Interact with Uniswap for swapping ERC20 tokens to ETH",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "branavan",
+  "license": "ISC",
+  "dependencies": {
+    "@uniswap/sdk": "^3.0.3",
+    "ethereum-checksum-address": "^0.0.6",
+    "ethers": "^5.4.5",
+    "prompt-sync": "^4.2.0"
+  }
+}
