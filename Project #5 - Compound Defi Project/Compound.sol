@@ -84,17 +84,31 @@ contract SmartBankAccount is Ownable{
         emit accountDeposit(msg.sender, msg.value, block.timestamp);
     }
     
-    function approveERC20Balance(address erc20SmartContractAddress, uint _amount) public {
+    function approveERC20Balance(address _contractAddress, uint _amount) public returns(bool) {
         // Instantiate the ERC20 contract
-        IERC20 erc20 = IERC20(erc20SmartContractAddress);
+        IERC20 erc20 = IERC20(_contractAddress);
+        // Msg.sender approves our contract to spend a specified amount of ERC20 tokens on their behalf
+        return erc20.approve(address(this), _amount);
+    }
+    
+    function depositERC20Balance(address _contractAddress, uint _amount) public {
+        // Instantiate the ERC20 contract
+        IERC20 erc20 = IERC20(_contractAddress);
         // Check if the user has sufficient amount to approve
         require(erc20.balanceOf(msg.sender) > _amount, "Insufficient ERC20 Tokens");
         // Approves our smart contract to use the provided balance
-        erc20.approve(address(this), _amount);
+        uint _allowance = getERC20Allowance(_contractAddress);
+        // Performing a Check 
+        require(_allowance > 0, "No ERC20 tokens have been authorized. Please use the approveERC20Balance() to specify the amount of ERC20 tokens you'd like to authorize.");
+        // Transfer ERC20 token from msg.sender to our contract's address
+        erc20.transferFrom(msg.sender, address(this), _allowance);
     }
     
-    function depositERC20Balance() public {
-        require(erc20.allowance(msg.sender, address(this)) > 0, "No ERC20 tokens have been authorized. Please use the approveERC20Balance() to specify the amount of ERC20 tokens you'd like to authorize.");
+    function getERC20Allowance(address erc20SmartContractAddress) public view returns(uint) {
+        // Instantiate the ERC20 contract
+        IERC20 erc20 = IERC20(erc20SmartContractAddress);
+        // Returns the amount of ERC20 tokens msg.sender has approved for our contract to use
+        return erc20.allowance(msg.sender, address(this));
     }
     
     function getcETHBalance(address _address) public view returns(uint){
@@ -159,6 +173,7 @@ contract SmartBankAccount is Ownable{
         emit contractDeposit(msg.sender, msg.value, block.timestamp);
     }
     
+    // Compound sends ETH once we redeem cETH
     receive() external payable{
     }
     
